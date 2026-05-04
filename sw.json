@@ -1,0 +1,59 @@
+// ── Service Worker — Rateio de Despesas ──
+const CACHE_NAME = 'rateio-v1';
+
+const ASSETS = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/sw.js'
+];
+
+// Instalação: pré-cacheia os arquivos estáticos
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS);
+    })
+  );
+  self.skipWaiting();
+});
+
+// Ativação: remove caches antigos de versões anteriores
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
+      );
+    })
+  );
+  self.clients.claim();
+});
+
+// Fetch: estratégia Network First com fallback para cache
+self.addEventListener('fetch', (event) => {
+  // Ignora requisições não-GET e chamadas ao Firebase/APIs externas
+  if (event.request.method !== 'GET') return;
+  if (event.request.url.includes('firestore.googleapis.com')) return;
+  if (event.request.url.includes('firebase')) return;
+
+  event.respondWith(
+    fetch(event.request)
+      .then((networkResponse) => {
+        // Atualiza o cache com a resposta mais recente
+        const responseClone = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseClone);
+        });
+        return networkResponse;
+      })
+      .catch(() => {
+        // Offline: serve do cache
+        return caches.match(event.request).then((cached) => {
+          return cached || caches.match('/index.html');
+        });
+      })
+  );
+});
