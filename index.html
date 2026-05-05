@@ -171,6 +171,7 @@
       flex-wrap: wrap;
       gap: 8px;
       margin-top: 10px;
+      min-height: 36px;
     }
     .user-chip {
       display: flex;
@@ -257,9 +258,9 @@
       border-radius: var(--radius);
       margin-bottom: 16px;
     }
-    .result-total .lbl  { font-size: .8rem; color: var(--text-muted); margin-bottom: 4px; }
-    .result-total .val  { font-size: 1.8rem; font-weight: 800; color: var(--primary); }
-    .result-total .sub  { font-size: .78rem; color: var(--text-muted); margin-top: 6px; }
+    .result-total .lbl { font-size: .8rem; color: var(--text-muted); margin-bottom: 4px; }
+    .result-total .val { font-size: 1.8rem; font-weight: 800; color: var(--primary); }
+    .result-total .sub { font-size: .78rem; color: var(--text-muted); margin-top: 6px; }
 
     .users-result {
       display: grid;
@@ -274,9 +275,9 @@
       background: var(--card);
     }
     .user-result-card.credor { border-color: var(--success); background: var(--success-dim); }
-    .user-result-card.devedor{ border-color: var(--danger);  background: var(--danger-dim); }
-    .user-result-card .name  { font-weight: 700; font-size: .92rem; margin-bottom: 10px; }
-    .user-result-card .line  {
+    .user-result-card.devedor { border-color: var(--danger); background: var(--danger-dim); }
+    .user-result-card .name { font-weight: 700; font-size: .92rem; margin-bottom: 10px; }
+    .user-result-card .line {
       display: flex;
       justify-content: space-between;
       font-size: .8rem;
@@ -350,11 +351,11 @@
     /* ── Empty state ── */
     .empty {
       text-align: center;
-      padding: 28px 16px;
+      padding: 20px 16px;
       color: var(--text-muted);
       font-size: .88rem;
     }
-    .empty .ico { font-size: 2.2rem; display: block; margin-bottom: 8px; }
+    .empty .ico { font-size: 2rem; display: block; margin-bottom: 6px; }
 
     /* ── Toast ── */
     #toast {
@@ -390,30 +391,25 @@
 </head>
 <body>
 
-<!-- ══════════════════════════════
-     HEADER
-════════════════════════════════ -->
+<!-- ══ HEADER ══ -->
 <header>
   <h1>💰 Rateio de Despesas</h1>
   <div class="header-sub">
     <p>Controle mensal compartilhado</p>
-    <div class="sync-badge" onclick="openFirebaseModal()" title="Configurar conexão Firebase">
+    <div class="sync-badge" onclick="openFirebaseModal()" title="Configurar Firebase">
       <div class="dot" id="syncDot"></div>
       <span id="syncLabel">Não conectado</span>
     </div>
   </div>
 </header>
 
-<!-- ══════════════════════════════
-     MODAL — FIREBASE CONFIG
-════════════════════════════════ -->
+<!-- ══ MODAL FIREBASE ══ -->
 <div class="modal-overlay hidden" id="firebaseModal">
   <div class="modal">
     <h2>🔥 Configurar Firebase</h2>
     <p>
       Informe as credenciais do seu projeto Firebase Firestore.<br>
-      Elas ficam salvas localmente no seu dispositivo e a conexão
-      é reestabelecida automaticamente nas próximas visitas.
+      Ficam salvas localmente e a reconexão é automática nas próximas visitas.
     </p>
     <div class="modal-field">
       <label>API Key</label>
@@ -438,9 +434,7 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════
-     CONTEÚDO PRINCIPAL
-════════════════════════════════ -->
+<!-- ══ CONTEÚDO ══ -->
 <div class="wrap">
 
   <!-- PERÍODO -->
@@ -479,6 +473,7 @@
         <button class="btn-primary" style="width:100%" onclick="addUser()">+ Adicionar</button>
       </div>
     </div>
+    <!-- IMPORTANTE: #usersEmpty é filho direto de #usersList mas NUNCA é removido -->
     <div class="users-list" id="usersList">
       <div class="empty" id="usersEmpty">
         <span class="ico">👤</span>Nenhum participante cadastrado.
@@ -498,8 +493,8 @@
       <div></div>
     </div>
 
+    <!-- IMPORTANTE: #expenseEmpty é irmão de #expenseList, não filho -->
     <div id="expenseList"></div>
-
     <div class="empty" id="expenseEmpty">
       <span class="ico">📋</span>Nenhuma despesa cadastrada.
     </div>
@@ -520,13 +515,10 @@
 
 <div id="toast"></div>
 
-<!-- ══════════════════════════════
-     JAVASCRIPT
-════════════════════════════════ -->
 <script>
 'use strict';
 
-// ─── Estado global ───────────────────────────────────────
+// ─── Estado global ────────────────────────────────────────
 let db               = null;
 let fsImports        = null;
 let currentPeriod    = '';
@@ -541,7 +533,6 @@ const MONTHS = [
 
 // ─── Inicialização ────────────────────────────────────────
 (function init() {
-  // Popula select de meses
   const selMes = document.getElementById('selMes');
   MONTHS.forEach((m, i) => {
     const o = document.createElement('option');
@@ -550,7 +541,6 @@ const MONTHS = [
     selMes.appendChild(o);
   });
 
-  // Popula select de anos
   const selAno = document.getElementById('selAno');
   const now    = new Date();
   for (let y = now.getFullYear() - 1; y <= now.getFullYear() + 1; y++) {
@@ -565,9 +555,8 @@ const MONTHS = [
   updatePeriodLabel();
   tryAutoConnect();
 
-  // Registra Service Worker
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 })();
 
@@ -587,8 +576,10 @@ function changePeriod() {
 
 // ─── Firebase ─────────────────────────────────────────────
 function setSyncStatus(state, label) {
-  document.getElementById('syncDot').className  = 'dot ' + state;
-  document.getElementById('syncLabel').textContent = label;
+  const dot = document.getElementById('syncDot');
+  const lbl = document.getElementById('syncLabel');
+  if (dot) dot.className = 'dot ' + state;
+  if (lbl) lbl.textContent = label;
 }
 
 function openFirebaseModal() {
@@ -629,8 +620,11 @@ function getStoredConfig() {
 
 async function tryAutoConnect() {
   const cfg = getStoredConfig();
-  if (cfg) await connectFirebase(cfg);
-  else     await loadPeriodData();
+  if (cfg) {
+    await connectFirebase(cfg);
+  } else {
+    await loadPeriodData();
+  }
 }
 
 async function connectFirebase(cfg) {
@@ -651,7 +645,7 @@ async function connectFirebase(cfg) {
     showToast('✅ Firebase conectado!');
     await loadPeriodData();
   } catch (err) {
-    console.error(err);
+    console.error('Erro Firebase:', err);
     setSyncStatus('error', 'Erro de conexão');
     showToast('❌ Falha ao conectar. Verifique as credenciais.');
     await loadPeriodData();
@@ -661,34 +655,34 @@ async function connectFirebase(cfg) {
 // ─── Persistência ─────────────────────────────────────────
 async function saveData() {
   const data = { users, expenses };
-
-  // Sempre salva localmente
   try {
     localStorage.setItem('rateio_' + currentPeriod, JSON.stringify(data));
-  } catch (e) { console.warn('localStorage cheio:', e); }
-
-  // Sincroniza com Firestore se disponível
+  } catch (e) {
+    console.warn('localStorage falhou:', e);
+  }
   if (db && fsImports) {
     const { doc, setDoc } = fsImports;
     try {
       await setDoc(doc(db, 'rateio', currentPeriod), data);
-    } catch (e) { console.warn('Sync Firestore falhou:', e); }
+    } catch (e) {
+      console.warn('Sync Firestore falhou:', e);
+    }
   }
 }
 
 async function loadPeriodData() {
   let data = null;
 
-  // Tenta carregar do Firestore primeiro
   if (db && fsImports) {
     const { doc, getDoc } = fsImports;
     try {
       const snap = await getDoc(doc(db, 'rateio', currentPeriod));
       if (snap.exists()) data = snap.data();
-    } catch (e) { console.warn('Leitura Firestore falhou:', e); }
+    } catch (e) {
+      console.warn('Leitura Firestore falhou:', e);
+    }
   }
 
-  // Fallback: localStorage
   if (!data) {
     const raw = localStorage.getItem('rateio_' + currentPeriod);
     if (raw) {
@@ -704,7 +698,9 @@ async function loadPeriodData() {
 
   renderUsers();
   renderExpenses();
-  document.getElementById('resultCard').style.display = 'none';
+
+  const rc = document.getElementById('resultCard');
+  if (rc) rc.style.display = 'none';
 }
 
 // ─── Participantes ────────────────────────────────────────
@@ -717,7 +713,7 @@ function addUser() {
   users.push(name);
   inp.value = '';
   renderUsers();
-  renderExpenses();   // atualiza os selects de "Pago por"
+  renderExpenses();
   saveData();
 }
 
@@ -726,29 +722,33 @@ function removeUser(name) {
     e => e.paidBy === name || e.exclusiveTo === name
   );
   if (linked)
-    return showToast(`"${name}" está vinculado a despesas. Remova-as primeiro.`);
+    return showToast(`"${name}" está em despesas. Remova-as primeiro.`);
   users = users.filter(u => u !== name);
   renderUsers();
   renderExpenses();
   saveData();
 }
 
+// ── CORREÇÃO: remove apenas .user-chip, nunca toca em #usersEmpty ──
 function renderUsers() {
   const list  = document.getElementById('usersList');
   const empty = document.getElementById('usersEmpty');
-  list.innerHTML = '';
+
+  // Remove somente os chips dinâmicos
+  list.querySelectorAll('.user-chip').forEach(el => el.remove());
+
   if (!users.length) {
-    list.appendChild(empty);
     empty.style.display = '';
     return;
   }
   empty.style.display = 'none';
+
   users.forEach(u => {
     const chip = document.createElement('div');
     chip.className = 'user-chip';
     chip.innerHTML = `
-      ${esc(u)}
-      <button onclick="removeUser('${esc(u)}')" title="Remover ${esc(u)}">×</button>
+      <span>${esc(u)}</span>
+      <button onclick="removeUser('${esc(u)}')" title="Remover">×</button>
     `;
     list.appendChild(chip);
   });
@@ -756,11 +756,13 @@ function renderUsers() {
 
 // ─── Despesas ─────────────────────────────────────────────
 function addExpenseRow(exp = null) {
-  const id   = exp ? exp.id : expenseIdCounter++;
-  const list = document.getElementById('expenseList');
-  document.getElementById('expenseEmpty').style.display = 'none';
+  const id    = exp ? exp.id : expenseIdCounter++;
+  const list  = document.getElementById('expenseList');
+  const empty = document.getElementById('expenseEmpty');
 
-  const row = document.createElement('div');
+  if (empty) empty.style.display = 'none';
+
+  const row  = document.createElement('div');
   row.className = 'expense-row';
   row.id = 'row_' + id;
 
@@ -776,19 +778,17 @@ function addExpenseRow(exp = null) {
     <div class="col-desc">
       <input
         type="text"
-        placeholder="Descrição da despesa"
+        placeholder="Descrição"
         value="${exp ? esc(exp.desc) : ''}"
         oninput="updateField(${id}, 'desc', this.value)"
       />
     </div>
-
     <div>
       <select onchange="updateField(${id}, 'paidBy', this.value)">
         <option value="">— Quem pagou —</option>
         ${userOpts}
       </select>
     </div>
-
     <div>
       <input
         type="number"
@@ -799,7 +799,6 @@ function addExpenseRow(exp = null) {
         oninput="updateField(${id}, 'value', parseFloat(this.value) || 0)"
       />
     </div>
-
     <div class="col-toggle">
       <div class="toggle-tipo">
         <button
@@ -821,35 +820,34 @@ function addExpenseRow(exp = null) {
         </select>
       </div>
     </div>
-
     <div class="col-del">
       <button class="btn-danger btn-sm" onclick="removeExpense(${id})">✕</button>
     </div>
   `;
   list.appendChild(row);
 
-  // Registra no array apenas se for nova
   if (!exp) {
     expenses.push({
-      id,
-      desc: '',
-      paidBy: '',
-      value: 0,
-      tipo: 'shared',
-      exclusiveTo: ''
+      id, desc: '', paidBy: '', value: 0,
+      tipo: 'shared', exclusiveTo: ''
     });
   }
 }
 
+// ── CORREÇÃO: remove apenas .expense-row, nunca toca em #expenseEmpty ──
 function renderExpenses() {
-  const list = document.getElementById('expenseList');
-  list.innerHTML = '';
+  const list  = document.getElementById('expenseList');
+  const empty = document.getElementById('expenseEmpty');
+
+  // Remove somente as linhas dinâmicas
+  list.querySelectorAll('.expense-row').forEach(el => el.remove());
+
   if (!expenses.length) {
-    document.getElementById('expenseEmpty').style.display = '';
-  } else {
-    document.getElementById('expenseEmpty').style.display = 'none';
-    expenses.forEach(e => addExpenseRow(e));
+    empty.style.display = '';
+    return;
   }
+  empty.style.display = 'none';
+  expenses.forEach(e => addExpenseRow(e));
 }
 
 function updateField(id, field, value) {
@@ -861,20 +859,22 @@ function updateField(id, field, value) {
 
 function setTipo(id, tipo) {
   updateField(id, 'tipo', tipo);
-  document.getElementById(`btn-shared-${id}`).className =
-    tipo === 'shared' ? 'active-shared' : '';
-  document.getElementById(`btn-excl-${id}`).className =
-    tipo === 'excl' ? 'active-excl' : '';
-  document.getElementById(`exclSel_${id}`).style.display =
-    tipo === 'excl' ? '' : 'none';
+  const bs = document.getElementById(`btn-shared-${id}`);
+  const be = document.getElementById(`btn-excl-${id}`);
+  const se = document.getElementById(`exclSel_${id}`);
+  if (bs) bs.className = tipo === 'shared' ? 'active-shared' : '';
+  if (be) be.className = tipo === 'excl'   ? 'active-excl'   : '';
+  if (se) se.style.display = tipo === 'excl' ? '' : 'none';
 }
 
 function removeExpense(id) {
   expenses = expenses.filter(e => e.id !== id);
   const row = document.getElementById('row_' + id);
   if (row) row.remove();
-  if (!expenses.length)
-    document.getElementById('expenseEmpty').style.display = '';
+  if (!expenses.length) {
+    const empty = document.getElementById('expenseEmpty');
+    if (empty) empty.style.display = '';
+  }
   saveData();
 }
 
@@ -885,11 +885,9 @@ function calcular() {
   if (!expenses.length)
     return showToast('Adicione ao menos uma despesa.');
 
-  const n = users.length;
-
-  // Acumuladores
-  const paid       = {};  // total pago por cada usuário
-  const exclOwed   = {};  // despesas exclusivas que recaem sobre cada usuário
+  const n        = users.length;
+  const paid     = {};
+  const exclOwed = {};
   users.forEach(u => { paid[u] = 0; exclOwed[u] = 0; });
 
   let totalShared = 0;
@@ -898,7 +896,6 @@ function calcular() {
   expenses.forEach(exp => {
     const v = parseFloat(exp.value) || 0;
     if (!exp.paidBy || v <= 0) return;
-
     paid[exp.paidBy] += v;
 
     if (exp.tipo === 'shared') {
@@ -911,9 +908,8 @@ function calcular() {
   });
 
   const totalGeral  = totalShared + totalExcl;
-  const shareRateio = totalShared / n;
+  const shareRateio = n > 0 ? totalShared / n : 0;
 
-  // O que cada um DEVE pagar: parte do rateio + exclusivas sob sua responsabilidade
   const owes    = {};
   const balance = {};
   users.forEach(u => {
@@ -922,11 +918,10 @@ function calcular() {
   });
 
   const transfers = resolveTransfers(balance);
-  renderResults(totalGeral, totalShared, totalExcl, shareRateio,
-                paid, owes, exclOwed, balance, transfers);
+  renderResults(totalGeral, totalShared, totalExcl,
+                shareRateio, paid, owes, exclOwed, balance, transfers);
 }
 
-// Algoritmo de liquidação mínima de saldos
 function resolveTransfers(balance) {
   const transfers = [];
   const cred = [], debt = [];
@@ -942,9 +937,8 @@ function resolveTransfers(balance) {
   let ci = 0, di = 0;
   while (ci < cred.length && di < debt.length) {
     const amt = Math.min(cred[ci].b, debt[di].b);
-    if (amt > 0.005) {
+    if (amt > 0.005)
       transfers.push({ from: debt[di].u, to: cred[ci].u, amount: amt });
-    }
     cred[ci].b -= amt;
     debt[di].b -= amt;
     if (cred[ci].b < 0.005) ci++;
@@ -953,7 +947,6 @@ function resolveTransfers(balance) {
   return transfers;
 }
 
-// ─── Renderização dos resultados ──────────────────────────
 function renderResults(totalGeral, totalShared, totalExcl,
                        shareRateio, paid, owes, exclOwed, balance, transfers) {
   const card    = document.getElementById('resultCard');
@@ -965,9 +958,9 @@ function renderResults(totalGeral, totalShared, totalExcl,
       <div class="lbl">Total geral — ${document.getElementById('periodBadge').textContent}</div>
       <div class="val">${fmt(totalGeral)}</div>
       <div class="sub">
-        Despesas rateadas: ${fmt(totalShared)} &nbsp;|&nbsp;
+        Rateadas: ${fmt(totalShared)} &nbsp;|&nbsp;
         Exclusivas: ${fmt(totalExcl)} &nbsp;|&nbsp;
-        Quota por pessoa (rateio): ${fmt(shareRateio)}
+        Quota por pessoa: ${fmt(shareRateio)}
       </div>
     </div>
     <div class="users-result">
@@ -983,10 +976,10 @@ function renderResults(totalGeral, totalShared, totalExcl,
     html += `
       <div class="user-result-card ${cls}">
         <div class="name">👤 ${esc(u)}</div>
-        <div class="line"><span>Total pago</span>       <span>${fmt(paid[u] || 0)}</span></div>
-        <div class="line"><span>Quota rateio</span>     <span>${fmt(shareRateio)}</span></div>
-        <div class="line"><span>Despesas exclusivas</span><span>${fmt(exclOwed[u] || 0)}</span></div>
-        <div class="line"><span>Total a pagar</span>    <span>${fmt(owes[u])}</span></div>
+        <div class="line"><span>Total pago</span>        <span>${fmt(paid[u] || 0)}</span></div>
+        <div class="line"><span>Quota rateio</span>      <span>${fmt(shareRateio)}</span></div>
+        <div class="line"><span>Despesas excl.</span>    <span>${fmt(exclOwed[u] || 0)}</span></div>
+        <div class="line"><span>Total a pagar</span>     <span>${fmt(owes[u])}</span></div>
         <div class="balance"><span>Saldo</span>${balSpan}</div>
       </div>
     `;
@@ -994,8 +987,10 @@ function renderResults(totalGeral, totalShared, totalExcl,
   html += '</div>';
 
   if (transfers.length) {
-    html += `<div class="section-title">💸 Transferências para equalizar</div>
-             <div class="transfers">`;
+    html += `
+      <div class="section-title">💸 Transferências para equalizar</div>
+      <div class="transfers">
+    `;
     transfers.forEach(t => {
       html += `
         <div class="transfer-item">
@@ -1008,9 +1003,11 @@ function renderResults(totalGeral, totalShared, totalExcl,
     });
     html += '</div>';
   } else {
-    html += `<p style="color:var(--success);font-weight:600;font-size:.9rem">
-      ✅ Contas equilibradas — nenhuma transferência necessária.
-    </p>`;
+    html += `
+      <p style="color:var(--success);font-weight:600;font-size:.9rem">
+        ✅ Contas equilibradas — nenhuma transferência necessária.
+      </p>
+    `;
   }
 
   content.innerHTML = html;
@@ -1036,6 +1033,7 @@ function esc(str) {
 let toastTimer;
 function showToast(msg) {
   const t = document.getElementById('toast');
+  if (!t) return;
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
